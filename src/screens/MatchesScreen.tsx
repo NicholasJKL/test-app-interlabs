@@ -291,7 +291,6 @@ function MatchCard({
   );
 }
 
-/* ---------- helpers ---------- */
 
 function statusInfo(match: Match): {
   text: string;
@@ -318,7 +317,6 @@ function formatDate(iso: string | null): string {
   if (!iso) return 'Дата не назначена';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return `Некорректная дата: ${iso}`;
-  // toLocaleString без timeZone → часовой пояс устройства
   return d.toLocaleString('ru-RU', {
     day: '2-digit',
     month: '2-digit',
@@ -360,7 +358,6 @@ function compareMatches(a: Match, b: Match): number {
   if (r !== 0) return r;
   const ta = toTime(a.startsAt);
   const tb = toTime(b.startsAt);
-  // завершённые — свежие сверху, остальные — по возрастанию
   return compareDates(ta, tb, a.status === 'finished');
 }
 
@@ -368,8 +365,6 @@ function previewBody(text: string): string {
   const cleaned = text.replace(/\r/g, '').slice(0, 200);
   return cleaned.length > 0 ? JSON.stringify(cleaned) : '<пустое тело>';
 }
-
-/* ---------- styles ---------- */
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f7f8fa' },
