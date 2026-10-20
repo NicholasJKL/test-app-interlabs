@@ -2,3 +2,4 @@
 // Адрес менять не нужно.
 export const MATCHES_URL =
   'https://raw.githubusercontent.com/OWNER/REPO/main/data/matches.json';
+export const USE_MOCK_MATCHES = true;
