@@ -9,10 +9,12 @@ import {
   View,
 } from 'react-native';
 
+import { FavoriteButton } from '../components/FavoriteButton';
+import { useFavorites } from '../hooks/useFavorites';
 import { UpdatedAgo } from '../components/UpdatedAgo';
+
 import { MATCHES_URL, USE_MOCK_MATCHES } from '../config'; // MATCHES_URL: 404 NOT FOUND
 import matchesMock from '../../data/matches.json';
-
 
 type MatchStatus = 'scheduled' | 'live' | 'postponed' | 'finished';
 
@@ -41,6 +43,7 @@ export function MatchesScreen() {
   const [filter, setFilter] = useState<Filter>('all');
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const { isFavorite, toggle } = useFavorites();
   const reqIdRef = useRef(0);
 
   const loadMatches = useCallback(async () => {
@@ -187,7 +190,13 @@ export function MatchesScreen() {
       <FlatList
         data={visible}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <MatchCard match={item} />}
+        renderItem={({ item }) => (
+          <MatchCard
+            match={item}
+            isFavorite={isFavorite(item.id)}
+            onToggleFavorite={() => toggle(item.id)}
+          />
+        )}
         contentContainerStyle={
           visible.length === 0 ? styles.listEmpty : styles.list
         }
@@ -230,7 +239,15 @@ function Chip({
   );
 }
 
-function MatchCard({ match }: { match: Match }) {
+function MatchCard({
+  match,
+  isFavorite,
+  onToggleFavorite,
+}: {
+  match: Match;
+  isFavorite: boolean;
+  onToggleFavorite: () => void;
+}) {
   const s = statusInfo(match);
   return (
     <View style={styles.card}>
@@ -238,22 +255,25 @@ function MatchCard({ match }: { match: Match }) {
         <Text style={styles.teams} numberOfLines={2}>
           {match.home.name} — {match.away.name}
         </Text>
-        <View
-          style={[
-            styles.badge,
-            s.tone === 'live' && styles.badgeLive,
-            s.tone === 'done' && styles.badgeDone,
-          ]}
-        >
-          <Text
+        <View style={styles.cardTopRight}>
+          <FavoriteButton active={isFavorite} onPress={onToggleFavorite} />
+          <View
             style={[
-              styles.badgeText,
-              s.tone === 'live' && styles.badgeTextLive,
-              s.tone === 'done' && styles.badgeTextDone,
+              styles.badge,
+              s.tone === 'live' && styles.badgeLive,
+              s.tone === 'done' && styles.badgeDone,
             ]}
           >
-            {s.text}
-          </Text>
+            <Text
+              style={[
+                styles.badgeText,
+                s.tone === 'live' && styles.badgeTextLive,
+                s.tone === 'done' && styles.badgeTextDone,
+              ]}
+            >
+              {s.text}
+            </Text>
+          </View>
         </View>
       </View>
 
@@ -414,6 +434,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 12,
   },
+  cardTopRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   teams: { flex: 1, fontWeight: '600', fontSize: 16, color: '#111' },
   scoreRow: {
     flexDirection: 'row',
