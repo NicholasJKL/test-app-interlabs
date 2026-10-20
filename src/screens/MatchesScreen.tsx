@@ -34,7 +34,7 @@ interface Match {
   score: { home: number; away: number } | null;
 }
 
-type Filter = 'all' | 'live' | 'upcoming' | 'finished';
+type Filter = 'all' | 'live' | 'upcoming' | 'finished' | 'favorites';
 
 export function MatchesScreen() {
   const [matches, setMatches] = useState<Match[]>([]);
@@ -43,7 +43,7 @@ export function MatchesScreen() {
   const [filter, setFilter] = useState<Filter>('all');
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-  const { isFavorite, toggle } = useFavorites();
+  const { favorites, isFavorite, toggleFavorite } = useFavorites();
   const reqIdRef = useRef(0);
 
   const loadMatches = useCallback(async () => {
@@ -87,10 +87,12 @@ export function MatchesScreen() {
   }, [loadMatches]);
 
   const refresh = useCallback(async () => {
+    setLoading(true);
     setRefreshing(true);
     try {
       await loadMatches();
     } finally {
+      setLoading(false);
       setRefreshing(false);
     }
   }, [loadMatches]);
@@ -98,20 +100,20 @@ export function MatchesScreen() {
   const visible = useMemo(() => {
     const byFilter = matches.filter((m) => {
       if (filter === 'all') return true;
-      if (filter === 'upcoming')
-        return m.status === 'scheduled' || m.status === 'postponed';
       if (filter === 'live') return m.status === 'live';
-      return m.status === 'finished';
+      if (filter === 'upcoming') return m.status === 'scheduled' || m.status === 'postponed';
+      if (filter === 'finished') return m.status === 'finished';
+      return favorites.includes(m.id);
     });
     return [...byFilter].sort(compareMatches);
-  }, [matches, filter]);
+  }, [matches, filter, favorites]);
 
   const liveCount = useMemo(
     () => matches.filter((m) => m.status === 'live').length,
     [matches]
   );
 
-  if (loading && matches.length === 0) {
+  if (loading) {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color="#007AFF" />
@@ -163,6 +165,12 @@ export function MatchesScreen() {
             active={filter === 'finished'}
             onPress={() => setFilter('finished')}
           />
+          <Chip
+            label="Избранное ★"
+            active={filter === 'favorites'}
+            onPress={() => setFilter('favorites')}
+            count={favorites.length}
+          />
         </View>
 
         <View style={styles.headerBottomRow}>
@@ -172,11 +180,17 @@ export function MatchesScreen() {
             <View />
           )}
           <TouchableOpacity
-            style={styles.refreshBtn}
+            style={[styles.refreshBtn, refreshing && styles.refreshBtnDisabled]}
             onPress={refresh}
+            disabled={refreshing}
             accessibilityRole="button"
+            accessibilityState={{ disabled: refreshing, busy: refreshing }}
           >
-            <Text style={styles.refreshBtnText}>Обновить</Text>
+            {refreshing ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Text style={styles.refreshBtnText}>Обновить</Text>
+            )}
           </TouchableOpacity>
         </View>
 
@@ -194,7 +208,7 @@ export function MatchesScreen() {
           <MatchCard
             match={item}
             isFavorite={isFavorite(item.id)}
-            onToggleFavorite={() => toggle(item.id)}
+            onToggleFavorite={() => toggleFavorite(item.id)}
           />
         )}
         contentContainerStyle={
@@ -205,7 +219,9 @@ export function MatchesScreen() {
         }
         ListEmptyComponent={
           <View style={styles.center}>
-            <Text style={styles.muted}>Матчей нет</Text>
+            <Text style={styles.muted}>
+              {filter === 'favorites' ? 'В избранном пока пусто' : 'Матчей нет'}
+            </Text>
           </View>
         }
       />
@@ -408,6 +424,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: '#007AFF',
   },
+  refreshBtnDisabled: { opacity: 0.7 },
   refreshBtnText: { color: '#fff', fontSize: 14, fontWeight: '600' },
   errorInline: { color: '#b00020', fontSize: 13 },
   list: { padding: 16, gap: 12 },
